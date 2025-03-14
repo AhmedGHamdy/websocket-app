@@ -4,31 +4,51 @@ import json
 import random
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.applicationinsights import ApplicationInsightsManagementClient
-from azure.monitor.query import MetricsQueryClient
 from azure.core.exceptions import AzureError
 import os
+from azure.monitor.query import MetricsQueryClient
 
 # List of simulated stock tickers
 TICKERS = ["AAPL", "TSLA", "GOOG", "AMZN"]
 
-# Application Insights setup
+# Environment variables for Azure
 sub_id = os.getenv("AZURE_SUBSCRIPTION_ID")
-credential = DefaultAzureCredential()
-client = ApplicationInsightsManagementClient(credential=credential, subscription_id=sub_id)
+resource_group_name = os.getenv("AZURE_RESOURCE_GROUP_NAME")
+app_insights_name = os.getenv("AZURE_APP_INSIGHTS_NAME")
 
-# Define your Application Insights resource name and ID
-resource_group_name = ""
-app_insights_name = "<your-app-insights-name>"
+# Setup Azure Application Insights client
+def get_azure_client():
+    # Authenticate using DefaultAzureCredential
+    credential = DefaultAzureCredential()
+    # Create the Application Insights Management Client
+    client = ApplicationInsightsManagementClient(credential=credential, subscription_id=sub_id)
+    return client
 
+# Function to send telemetry data to Application Insights
 async def send_telemetry(data):
     """
     Send telemetry data to Azure Application Insights
     """
     try:
-        # Send telemetry data as events, traces, or custom metrics
-        # Example: Send event
-        print(f"Sending data to Application Insights: {data}")
-        # You would send telemetry here using the Application Insights API
+        # Authenticate and create the client
+        client = get_azure_client()
+
+        # Here, we'll simulate sending telemetry data to Application Insights
+        # For example, send stock price as custom event to Application Insights
+        for ticker, price in data.items():
+            # You can add more details or structure depending on your needs
+            event_data = {
+                "event_name": "stock_price_event",
+                "ticker": ticker,
+                "price": price
+            }
+
+            # Here, you can actually send telemetry events using client methods
+            # The current client does not have a direct event tracking method,
+            # So you'd use Application Insights SDK for sending events in practice.
+            # The idea here is to track custom events as shown:
+            print(f"Sending to Application Insights: {event_data}")
+        
     except AzureError as e:
         print(f"Error sending telemetry: {e}")
 
@@ -57,4 +77,5 @@ async def main():
         await asyncio.Future()
 
 if __name__ == "__main__":
+    # Running the WebSocket server
     asyncio.run(main())
