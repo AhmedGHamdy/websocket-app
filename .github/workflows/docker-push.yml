@@ -2,8 +2,8 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - dev
+    branches: [ dev ]
+  workflow_dispatch:
 
 jobs:
   build_push_and_deploy:
