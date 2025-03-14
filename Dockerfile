@@ -10,6 +10,6 @@ COPY app.py .
 # Install required Python packages
 RUN pip3 install --no-cache-dir opencensus websockets opencensus-ext-azure
 
-EXPOSE 8080
+EXPOSE 8081
 
 CMD ["python", "app.py"]
