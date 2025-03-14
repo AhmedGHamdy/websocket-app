@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
 
 # Install dependencies
-RUN pip install websockets opencensus-ext-azure
+RUN pip install websockets opencensus-ext-azure aiohttp
 
 # Copy application code
 COPY app.py .
