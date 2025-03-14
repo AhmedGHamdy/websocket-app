@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+  websocket-app:
+    build: .
+    container_name: websocket-app
+    ports:
+      - "8080:8080"  # Exposing WebSocket service on port 8080
+    networks:
+      - monitoring
+    restart: always
+
+  prometheus:
+    image: prom/prometheus:v2.33.0
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml  # Mounting prometheus.yml into the container
+    ports:
+      - "9090:9090"  # Exposing Prometheus on port 9090
+    networks:
+      - monitoring
+    restart: always
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.19.0
+    container_name: blackbox-exporter
+    ports:
+      - "9115:9115"  # Exposing Blackbox Exporter on port 9115
+    networks:
+      - monitoring
+    restart: always
+
+
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"  # Exposing Grafana on port 3000
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin  # Default Grafana password
+    networks:
+      - monitoring
+    restart: always
+
+networks:
+  monitoring:
+    driver: bridge
