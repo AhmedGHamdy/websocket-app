@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY app.py .
 
-RUN pip3 install websockets opencensus-ext-azure
+RUN pip3 install opencensus websockets opencensus-ext-azure
 
 EXPOSE 8080
 
