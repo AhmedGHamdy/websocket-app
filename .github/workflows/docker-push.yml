@@ -1,4 +1,4 @@
-name: Build and Push Docker Image to ACR
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,11 +6,10 @@ on:
       - dev
 
 jobs:
-  build:
+  build_push_and_deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v3
 
       - name: Set up Docker Buildx
@@ -28,7 +27,31 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build and Push Docker Image
+      - name: Build Docker Image
         run: |
           docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.REPOSITORY_NAME }}:latest .
+
+      - name: Push Docker Image
+        run: |
           docker push ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.REPOSITORY_NAME }}:latest
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.2.0
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        id: tfplan
+        continue-on-error: true
+        run: |
+          # Run terraform plan with detailed exit code.
+          terraform plan -input=false -detailed-exitcode -out=tfplan
+          # Capture the exit code and set it as an output.
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+
+      - name: Terraform Apply
+        if: steps.tfplan.outputs.exit_code == '2'
+        run: terraform apply -input=false -auto-approve tfplan
