@@ -3,60 +3,112 @@ import websockets
 import json
 import random
 import os
-from opencensus.ext.azure.log_exporter import AzureLogHandler
 import logging
+from opencensus.ext.azure.log_exporter import AzureLogHandler
 
-# Retrieve the Application Insights connection string
+# ======================
+# Configuration Setup
+# ======================
+
+# Azure Application Insights Configuration
 connection_string = os.getenv('APPINSIGHTS_CONNECTION_STRING')
-
-# Print the connection string to verify it's being retrieved correctly (useful for debugging)
-print(f"Connection String: {connection_string}")
-
-# Check if the connection string is valid
 if not connection_string:
-    raise ValueError("Connection string is not set or is empty.")
+    raise ValueError("Application Insights connection string not configured")
 
-# Set up Application Insights logging handler
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
-
-# Configure the logger to write to the console as well
-logging.basicConfig(level=logging.INFO)  # Ensures logs are output to console
 logger.addHandler(AzureLogHandler(connection_string=connection_string))
 
-# List of simulated stock tickers.
+# Application Constants
 TICKERS = ["AAPL", "TSLA", "GOOG", "AMZN"]
+SERVER_PORT = 8080
+PING_INTERVAL = 10  # Seconds between keep-alive pings
 
-async def stream_stock_data(websocket, path=None):
-    """
-    WebSocket handler that streams simulated stock prices.
-    If no path is provided, it defaults to None.
-    """
+# ======================
+# WebSocket Server Logic
+# ======================
+
+async def maintain_connection(websocket):
+    """Maintain WebSocket connection with regular pings"""
     while True:
         try:
-            # Create a dictionary of simulated stock prices.
-            stock_data = {ticker: round(random.uniform(100, 300), 2) for ticker in TICKERS}
-
-            # Log the stock data to Application Insights
-            logger.info(f"Stock data: {json.dumps(stock_data)}")
-
-            # Send the stock data as JSON over the WebSocket.
-            await websocket.send(json.dumps(stock_data))
-
-            # Wait one second before sending the next update.
-            await asyncio.sleep(1)
+            await asyncio.sleep(PING_INTERVAL)
+            await websocket.ping()
+            logger.debug("Sent keep-alive ping")
         except Exception as e:
-            logger.error(f"Error occurred while streaming data: {e}")
-            break  # In case of error, break the loop to prevent infinite retries
+            logger.error(f"Connection maintenance failed: {e}")
+            break
 
-async def main():
+async def handle_client(websocket, path):
+    """Main WebSocket handler for client connections"""
+    logger.info(f"New connection from {websocket.remote_address}")
+    
+    # Start keep-alive task
+    keep_alive = asyncio.create_task(maintain_connection(websocket))
+    
     try:
-        # Start the WebSocket server on 0.0.0.0:8080.
-        async with websockets.serve(stream_stock_data, "0.0.0.0", 8080):
-            print("WebSocket server started on port 8080")
-            # Run forever.
-            await asyncio.Future()  # Keeps the server running indefinitely
+        while True:
+            # Generate simulated market data
+            market_data = {
+                ticker: round(random.uniform(100, 300), 2)
+                for ticker in TICKERS
+            }
+            
+            # Send data to client
+            try:
+                await websocket.send(json.dumps(market_data))
+                logger.info(f"Sent data: {market_data}")
+            except Exception as send_error:
+                logger.error(f"Data send failed: {send_error}")
+                break
+            
+            await asyncio.sleep(1)
+            
+    except websockets.exceptions.ConnectionClosed:
+        logger.info("Client disconnected normally")
     except Exception as e:
-        logger.error(f"WebSocket server error: {e}")
+        logger.error(f"Unexpected error: {e}")
+    finally:
+        keep_alive.cancel()
+        await websocket.close()
+
+# ======================
+# Server Lifecycle Management
+# ======================
+
+async def run_server():
+    """Start WebSocket server with proper lifecycle management"""
+    server = await websockets.serve(
+        handle_client,
+        "0.0.0.0",
+        SERVER_PORT,
+        ping_interval=None,  # We handle pings manually
+        max_size=2**20  # 1MB max message size
+    )
+    
+    logger.info(f"WebSocket server started on port {SERVER_PORT}")
+    logger.info(f"Server PID: {os.getpid()}")
+    
+    try:
+        await server.wait_closed()
+    except asyncio.CancelledError:
+        logger.info("Server shutdown initiated")
+        server.close()
+        await server.wait_closed()
+
+# ======================
+# Entry Point
+# ======================
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(run_server())
+    except KeyboardInterrupt:
+        logger.info("Server stopped by user")
+    except Exception as critical_error:
+        logger.critical(f"Fatal server error: {critical_error}")
+        raise

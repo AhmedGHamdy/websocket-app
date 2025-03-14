@@ -8,7 +8,7 @@ scrape_configs:
       module: [tcp_connect]  # Ensure this module exists in blackbox-exporter's config
     static_configs:
       - targets:
-          - websocket-app:8080  # The actual target to probe
+          - websocket-app:8081  # The actual target to probe
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target  # Pass target as a query parameter

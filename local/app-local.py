@@ -20,11 +20,14 @@ async def stream_stock_data(websocket, path=None):
         await asyncio.sleep(1)
 
 async def main():
-    # Start the WebSocket server on 0.0.0.0:8080.
-    async with websockets.serve(stream_stock_data, "0.0.0.0", 8080):
-        print("WebSocket server started on port 8080")
-        # Run forever.
-        await asyncio.Future()
+    # Start two WebSocket servers on different ports.
+    server1 = websockets.serve(stream_stock_data, "0.0.0.0", 8081)
+    server2 = websockets.serve(stream_stock_data, "0.0.0.0", 8080)
+
+    print("WebSocket servers started on ports 8081 and 8080")
+    
+    # Run both servers concurrently.
+    await asyncio.gather(server1, server2)
 
 if __name__ == "__main__":
     asyncio.run(main())
