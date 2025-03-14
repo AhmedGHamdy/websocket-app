@@ -41,17 +41,18 @@ jobs:
           terraform_version: 1.2.0
 
       - name: Terraform Init
+        working-directory: ./tf
         run: terraform init -input=false
 
       - name: Terraform Plan
+        working-directory: ./tf
         id: tfplan
         continue-on-error: true
         run: |
-          # Run terraform plan with detailed exit code.
           terraform plan -input=false -detailed-exitcode -out=tfplan
-          # Capture the exit code and set it as an output.
           echo "exit_code=$?" >> $GITHUB_OUTPUT
 
       - name: Terraform Apply
+        working-directory: ./tf
         if: steps.tfplan.outputs.exit_code == '2'
         run: terraform apply -input=false -auto-approve tfplan
