@@ -51,7 +51,7 @@ async def stream_stock_data(websocket, path=None):
 async def main():
     try:
         # Start the WebSocket server on 0.0.0.0:8080.
-        async with websockets.serve(stream_stock_data, "0.0.0.0", 8081):
+        async with websockets.serve(stream_stock_data, "0.0.0.0", 8080):
             print("WebSocket server started on port 8080")
             # Run forever.
             await asyncio.Future()  # Keeps the server running indefinitely
