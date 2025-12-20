@@ -1,0 +1,33 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'websocket-app'
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]  # Ensure this module exists in blackbox-exporter's config
+    static_configs:
+      - targets:
+          - websocket-app:8081  # The actual target to probe
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target  # Pass target as a query parameter
+      - source_labels: [__param_target]
+        target_label: instance  # Sets the 'instance' label to the target
+      - target_label: __address__
+        replacement: blackbox-exporter:9115  # Direct scraper to blackbox-exporter
+
+  - job_name: 'websocket-app-2'
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]  # Ensure this module exists in blackbox-exporter's config
+    static_configs:
+      - targets:
+          - websocket-app:8080  # The actual target to probe
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target  # Pass target as a query parameter
+      - source_labels: [__param_target]
+        target_label: instance  # Sets the 'instance' label to the target
+      - target_label: __address__
+        replacement: blackbox-exporter:9115  # Direct scraper to blackbox-exporter

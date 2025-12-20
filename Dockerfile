@@ -1,16 +1,15 @@
+# Use official Python image
 FROM python:3.9-slim
 
-WORKDIR /app
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
 
-# Copy and install requirements
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies
+RUN pip install websockets opencensus-ext-azure aiohttp
 
-# Copy the app code
+# Copy application code
 COPY app.py .
 
-# Expose the port your app listens on
-EXPOSE 8080
-
-# Start the application
+# Run the application
 CMD ["python", "app.py"]

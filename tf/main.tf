@@ -109,15 +109,15 @@ resource "azurerm_linux_web_app" "app" {
   service_plan_id     = azurerm_service_plan.asp.id
 
   site_config {
-    linux_fx_version   = "DOCKER|${azurerm_container_registry.acr.login_server}/websocket-app:latest"
     websockets_enabled = true
   }
 
   app_settings = {
-    "APPINSIGHTS_CONNECTION_STRING" = data.azurerm_key_vault_secret.ai_conn.value
-    "WEBSITES_PORT"                 = "8080"
-    "DOCKER_REGISTRY_SERVER_URL"      = "https://${azurerm_container_registry.acr.login_server}"
-    "DOCKER_REGISTRY_SERVER_USERNAME" = azurerm_container_registry.acr.admin_username
-    "DOCKER_REGISTRY_SERVER_PASSWORD" = azurerm_container_registry.acr.admin_password
+    "DOCKER_CUSTOM_IMAGE_NAME"       = "${azurerm_container_registry.acr.login_server}/websocket-app:latest"
+    "WEBSITES_PORT"                  = "8080"
+    "DOCKER_REGISTRY_SERVER_URL"     = "https://${azurerm_container_registry.acr.login_server}"
+    "DOCKER_REGISTRY_SERVER_USERNAME"= azurerm_container_registry.acr.admin_username
+    "DOCKER_REGISTRY_SERVER_PASSWORD"= azurerm_container_registry.acr.admin_password
+    "APPINSIGHTS_CONNECTION_STRING"  = data.azurerm_key_vault_secret.ai_conn.value
   }
 }

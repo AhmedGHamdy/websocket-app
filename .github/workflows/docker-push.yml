@@ -1,16 +1,15 @@
-name: Build and Push Docker Image to ACR
+name: CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - dev
+    branches: [ dev ]
+  workflow_dispatch:
 
 jobs:
-  build:
+  build_push_and_deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v3
 
       - name: Set up Docker Buildx
@@ -28,7 +27,44 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build and Push Docker Image
+      - name: Build Docker Image
         run: |
           docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.REPOSITORY_NAME }}:latest .
+
+      - name: Push Docker Image
+        run: |
           docker push ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.REPOSITORY_NAME }}:latest
+
+      - name: Set Azure Service Principal Environment Variables
+        run: |
+          echo "ARM_CLIENT_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r '.clientId')" >> $GITHUB_ENV
+          echo "ARM_CLIENT_SECRET=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r '.clientSecret')" >> $GITHUB_ENV
+          echo "ARM_SUBSCRIPTION_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r '.subscriptionId')" >> $GITHUB_ENV
+          echo "ARM_TENANT_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r '.tenantId')" >> $GITHUB_ENV
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.2.0
+
+      - name: Terraform Init
+        working-directory: ./tf
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        working-directory: ./tf
+        id: tfplan
+        continue-on-error: true
+        run: |
+          terraform plan -input=false -detailed-exitcode -out=tfplan
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+
+      - name: Terraform Apply
+        working-directory: ./tf
+        if: steps.tfplan.outputs.exit_code == '2'
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Terraform Post-Apply Plan
+        working-directory: ./tf
+        run: |
+          terraform plan -input=false
